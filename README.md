@@ -175,8 +175,6 @@ xlrd>=2.0
 **Slamani Abdelhafid**
 AI & Data Science Student — Saint Petersburg State University
 
-> *"SLAM is named after my family name, Slamani. It solves a real problem I face every day as a data student, and it carries my name."*
-
 ---
 
 ##  License
