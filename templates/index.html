@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SLAM — Data Cleaner</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:        #060608;
+  --surface:   #0d0d12;
+  --card:      #111117;
+  --border:    #1e1e2a;
+  --border2:   #2d2d3d;
+  --slam:      #00d4ff;
+  --slam2:     #7b61ff;
+  --blue:      #3c8eff;
+  --green:     #22d98a;
+  --yellow:    #ffd23c;
+  --text:      #eeeef5;
+  --muted:     #5a5a72;
+  --muted2:    #3a3a50;
+  --font:      'DM Sans', sans-serif;
+  --head:      'Orbitron', sans-serif;
+  --mono:      'JetBrains Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── noise grain overlay ── */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 999; opacity: .6;
+}
+
+/* ── HEADER ── */
+header {
+  border-bottom: 1px solid var(--border);
+  padding: 0 3rem;
+  display: flex; align-items: center;
+  height: 80px;
+  position: relative;
+  gap: 1.6rem;
+}
+header::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--slam), var(--slam2), transparent);
+  opacity: .5;
+}
+
+/* Logo block */
+.logo-block { display: flex; align-items: center; gap: 1.1rem; }
+
+.slam-logo {
+  font-family: var(--head);
+  font-size: 1.85rem;
+  font-weight: 900;
+  letter-spacing: .18em;
+  line-height: 1;
+  position: relative;
+  background: linear-gradient(135deg, #ffffff 0%, var(--slam) 55%, var(--slam2) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  padding: .1em 0;
+}
+.slam-logo::before {
+  content: 'SLAM';
+  position: absolute; inset: 0;
+  font-family: var(--head);
+  font-size: 1.85rem;
+  font-weight: 900;
+  letter-spacing: .18em;
+  background: linear-gradient(135deg, #ffffff 0%, var(--slam) 55%, var(--slam2) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: blur(12px);
+  opacity: .4;
+  z-index: -1;
+}
+
+.logo-divider {
+  width: 1px; height: 32px;
+  background: linear-gradient(to bottom, transparent, var(--border2), transparent);
+}
+
+.logo-meta { display: flex; flex-direction: column; gap: .18rem; }
+.logo-tagline {
+  font-family: var(--mono); font-size: .62rem;
+  color: var(--muted); letter-spacing: .12em; text-transform: uppercase;
+  line-height: 1.4;
+}
+.logo-tagline em {
+  font-style: normal;
+  color: var(--slam);
+}
+
+/* By Hafid */
+.by-hafid {
+  display: flex; align-items: center; gap: .5rem;
+  font-family: var(--mono); font-size: .7rem;
+  color: var(--muted2);
+  letter-spacing: .06em;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: .3rem .85rem;
+  transition: all .2s;
+}
+.by-hafid:hover {
+  border-color: var(--slam2);
+  color: var(--muted);
+}
+.by-hafid span {
+  font-size: .68rem; color: var(--muted);
+}
+.by-hafid strong {
+  background: linear-gradient(90deg, var(--slam), var(--slam2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 600;
+}
+
+.header-right {
+  margin-left: auto;
+  font-family: var(--mono); font-size: .72rem; color: var(--muted);
+  display: flex; align-items: center;
+}
+.dot {
+  width: 7px; height: 7px; background: var(--green); border-radius: 50%;
+  display: inline-block; margin-right: .45rem;
+  animation: pulse 2s infinite;
+  box-shadow: 0 0 6px var(--green);
+}
+@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.3 } }
+
+/* ── MAIN ── */
+main {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 3rem 2rem 8rem;
+}
+
+/* ── DROP ZONE ── */
+#dropzone {
+  border: 1.5px dashed var(--border2);
+  border-radius: 18px;
+  padding: 4.5rem 3rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all .22s ease;
+  background: var(--card);
+  position: relative; overflow: hidden;
+}
+#dropzone .glow {
+  position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
+  width: 400px; height: 200px;
+  background: radial-gradient(ellipse, rgba(255,60,60,.08) 0%, transparent 70%);
+  pointer-events: none;
+  transition: opacity .3s;
+}
+#dropzone.dragover { border-color: var(--slam); background: rgba(255,60,60,.04); transform: scale(1.008); }
+#dropzone.dragover .glow { opacity: 2; }
+#dropzone.has-file { border-color: var(--green); border-style: solid; }
+#dropzone.has-file .glow { background: radial-gradient(ellipse, rgba(34,217,138,.07) 0%, transparent 70%); }
+.drop-icon { font-size: 3rem; display: block; margin-bottom: 1rem; }
+.drop-title {
+  font-family: var(--head); font-size: 2.4rem; letter-spacing: .08em;
+  margin-bottom: .5rem; color: var(--text);
+}
+.drop-sub { color: var(--muted); font-size: .9rem; }
+.drop-sub b { color: var(--slam); font-weight: 500; }
+.file-badge {
+  display: none; align-items: center; gap: .6rem;
+  background: rgba(34,217,138,.1); border: 1px solid rgba(34,217,138,.25);
+  color: var(--green); border-radius: 8px;
+  padding: .5rem 1.1rem; font-family: var(--mono); font-size: .82rem;
+  margin: 1rem auto 0; width: fit-content;
+}
+#fileInput { display: none; }
+
+/* ── MODE SELECTOR ── */
+#mode-section { display: none; margin-top: 2rem; }
+.section-label {
+  font-family: var(--mono); font-size: .7rem; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .14em;
+  margin-bottom: 1rem;
+  display: flex; align-items: center; gap: .8rem;
+}
+.section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+.mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+@media(max-width:700px){ .mode-cards { grid-template-columns:1fr; } }
+
+.mode-card {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 1.8rem;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative; overflow: hidden;
+}
+.mode-card::before {
+  content: ''; position: absolute; inset: 0;
+  opacity: 0; transition: opacity .2s;
+}
+.mode-card.basic::before { background: radial-gradient(ellipse at 0% 0%, rgba(62,142,255,.08), transparent 60%); }
+.mode-card.ml::before    { background: radial-gradient(ellipse at 0% 0%, rgba(255,60,60,.08), transparent 60%); }
+.mode-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.mode-card:hover::before { opacity: 1; }
+.mode-card.selected.basic { border-color: var(--blue); }
+.mode-card.selected.ml    { border-color: var(--slam); }
+.mode-card.selected::before { opacity: 1; }
+
+.mode-icon { font-size: 2rem; margin-bottom: .8rem; display: block; }
+.mode-name {
+  font-family: var(--head); font-size: 1.6rem; letter-spacing: .06em;
+  margin-bottom: .4rem;
+}
+.mode-name.basic { color: var(--blue); }
+.mode-name.ml    { color: var(--slam); }
+.mode-desc { color: var(--muted); font-size: .85rem; line-height: 1.6; }
+.mode-badge {
+  position: absolute; top: 1rem; right: 1rem;
+  font-family: var(--mono); font-size: .65rem; font-weight: 500;
+  padding: .2rem .6rem; border-radius: 5px;
+}
+.mode-badge.basic { background: rgba(62,142,255,.12); color: var(--blue); }
+.mode-badge.ml    { background: rgba(255,60,60,.12); color: var(--slam); }
+.selected-check {
+  position: absolute; bottom: 1rem; right: 1rem;
+  width: 22px; height: 22px; border-radius: 50%;
+  display: none; align-items: center; justify-content: center;
+  font-size: .75rem;
+}
+.mode-card.selected.basic .selected-check { display: flex; background: var(--blue); color: #fff; }
+.mode-card.selected.ml    .selected-check { display: flex; background: var(--slam); color: #fff; }
+
+/* ── BASIC STEPS ── */
+#basic-steps { display: none; margin-top: 1.5rem; }
+.steps-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .8rem;
+}
+.step-toggle {
+  display: flex; align-items: center; gap: .9rem;
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 11px; padding: .9rem 1.1rem;
+  cursor: pointer; transition: all .18s;
+  user-select: none;
+}
+.step-toggle:hover { border-color: var(--border2); }
+.step-toggle.active { border-color: var(--blue); background: rgba(62,142,255,.06); }
+.step-cb {
+  width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0;
+  border: 1.5px solid var(--border2);
+  display: grid; place-items: center; font-size: .7rem;
+  transition: all .18s;
+}
+.step-toggle.active .step-cb { background: var(--blue); border-color: var(--blue); }
+.step-info { flex: 1; }
+.step-name { font-size: .88rem; font-weight: 600; }
+.step-desc { font-size: .75rem; color: var(--muted); margin-top: .1rem; line-height: 1.4; }
+.step-icon { font-size: 1.2rem; flex-shrink: 0; }
+
+/* ── ML OPTIONS ── */
+#ml-options { display: none; margin-top: 1.5rem; }
+.opts-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; }
+.opt-g label {
+  display: block; font-family: var(--mono); font-size: .68rem;
+  color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: .4rem;
+}
+.opt-g select, .opt-g input {
+  width: 100%; background: var(--surface); border: 1.5px solid var(--border);
+  color: var(--text); border-radius: 9px; padding: .6rem .9rem;
+  font-family: var(--font); font-size: .88rem; outline: none;
+  transition: border-color .18s; appearance: none;
+}
+.opt-g select:focus, .opt-g input:focus { border-color: var(--slam); }
+
+/* ── ACTIONS ── */
+#action-row { display: none; align-items: center; gap: 1rem; margin-top: 1.8rem; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: .6rem;
+  padding: .85rem 2rem; border-radius: 10px; border: none;
+  cursor: pointer; font-family: var(--font); font-size: .95rem; font-weight: 600;
+  transition: all .2s; letter-spacing: .01em;
+}
+#btn-slam {
+  background: linear-gradient(135deg, var(--slam), var(--slam2));
+  color: #fff; font-family: var(--head); font-size: 1.1rem;
+  letter-spacing: .1em;
+  box-shadow: 0 0 24px rgba(255,60,60,.3);
+  padding: .9rem 2.4rem;
+}
+#btn-slam:hover:not(:disabled) { box-shadow: 0 0 40px rgba(255,60,60,.5); transform: translateY(-1px); }
+#btn-slam:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.btn-ghost { background: transparent; color: var(--muted); border: 1.5px solid var(--border); }
+.btn-ghost:hover { color: var(--text); border-color: var(--border2); }
+.spinner { width: 17px; height: 17px; border: 2px solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%; animation: spin .55s linear infinite; display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── ERROR ── */
+.error-box {
+  background: rgba(255,60,60,.08); border: 1px solid rgba(255,60,60,.25);
+  color: #ff7070; border-radius: 10px; padding: .9rem 1.3rem;
+  font-size: .88rem; margin-top: 1rem; display: none;
+}
+
+/* ── RESULTS ── */
+#results { margin-top: 3.5rem; display: none; }
+
+.r-head {
+  font-family: var(--mono); font-size: .68rem; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .14em;
+  margin: 2.2rem 0 1rem;
+  display: flex; align-items: center; gap: .8rem;
+}
+.r-head::after { content:''; flex:1; height:1px; background:var(--border); }
+.r-head:first-child { margin-top: 0; }
+
+/* Stats grid */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: .9rem; }
+.s-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 13px; padding: 1.1rem 1.3rem;
+  transition: border-color .2s;
+}
+.s-card:hover { border-color: var(--border2); }
+.s-lbl { font-family: var(--mono); font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .09em; margin-bottom: .35rem; }
+.s-val { font-family: var(--head); font-size: 2.2rem; line-height: 1; letter-spacing: .02em; }
+.s-sub { font-size: .72rem; color: var(--muted); margin-top: .2rem; font-family: var(--mono); }
+.c-slam  { color: var(--slam); }
+.c-green { color: var(--green); }
+.c-yellow{ color: var(--yellow); }
+.c-blue  { color: var(--blue); }
+
+/* Compare */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+@media(max-width:640px){ .compare-grid { grid-template-columns:1fr; } }
+.cmp-card { background: var(--card); border: 1px solid var(--border); border-radius: 13px; padding: 1.3rem 1.5rem; }
+.cmp-title { font-family: var(--mono); font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 1rem; }
+.cmp-title.before { color: var(--yellow); }
+.cmp-title.after  { color: var(--green); }
+.cmp-row { display: flex; justify-content: space-between; align-items: center; padding: .38rem 0; border-bottom: 1px solid rgba(255,255,255,.04); font-size: .85rem; }
+.cmp-row:last-child { border: none; }
+.cmp-k { color: var(--muted); font-family: var(--mono); font-size: .8rem; }
+.cmp-v { font-weight: 600; }
+
+/* Log */
+.log-list { list-style: none; display: flex; flex-direction: column; gap: .7rem; }
+.log-item {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 11px; padding: .9rem 1.3rem;
+  display: flex; align-items: flex-start; gap: 1rem;
+  transition: border-color .2s;
+}
+.log-item:hover { border-color: var(--border2); }
+.log-step {
+  font-family: var(--mono); font-size: .7rem; font-weight: 500;
+  background: rgba(255,60,60,.1); color: var(--slam);
+  border-radius: 6px; padding: .22rem .7rem; white-space: nowrap; flex-shrink: 0;
+}
+.log-icon { font-size: 1rem; flex-shrink: 0; line-height: 1.6; }
+.log-detail { font-size: .86rem; color: var(--text); line-height: 1.6; }
+
+/* Column table */
+.tbl-wrap { overflow-x: auto; border-radius: 13px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+thead tr { background: var(--surface); }
+th { padding: .72rem 1rem; text-align: left; font-family: var(--mono); font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .09em; white-space: nowrap; }
+td { padding: .65rem 1rem; border-top: 1px solid rgba(255,255,255,.04); font-family: var(--mono); }
+tr:hover td { background: rgba(255,255,255,.02); }
+.tag { display: inline-block; padding: .14rem .52rem; border-radius: 4px; font-size: .68rem; font-weight: 600; }
+.tag-num  { background: rgba(34,217,138,.12); color: var(--green); }
+.tag-cat  { background: rgba(62,142,255,.12); color: var(--blue); }
+.tag-date { background: rgba(255,210,60,.12); color: var(--yellow); }
+.tag-other{ background: rgba(255,255,255,.06); color: var(--muted); }
+.m-high { color: var(--slam); }
+.m-med  { color: var(--yellow); }
+.m-low  { color: var(--muted); }
+
+/* Sample */
+.sample-wrap { overflow-x: auto; border-radius: 13px; border: 1px solid var(--border); }
+.sample-wrap table { font-size: .78rem; }
+.sample-wrap td, .sample-wrap th { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.null-cell { color: var(--slam); font-style: italic; }
+
+/* ── DOWNLOAD BAR ── */
+#dl-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(6,6,8,.95); backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  padding: 1rem 2.5rem;
+  display: none; align-items: center; justify-content: space-between;
+  z-index: 200; gap: 1rem; flex-wrap: wrap;
+}
+.dl-info { font-size: .85rem; color: var(--muted); }
+.dl-info strong { color: var(--text); }
+.dl-info .tag-mode {
+  font-family: var(--mono); font-size: .7rem; padding: .15rem .55rem;
+  border-radius: 4px; margin-left: .5rem;
+}
+.btn-dl {
+  background: linear-gradient(135deg, var(--green), #1ab87a);
+  color: #000; font-weight: 700; font-family: var(--head);
+  font-size: 1rem; letter-spacing: .1em;
+  padding: .85rem 2.2rem; border-radius: 10px; border: none;
+  cursor: pointer; transition: all .2s;
+  box-shadow: 0 0 24px rgba(34,217,138,.3);
+}
+.btn-dl:hover { box-shadow: 0 0 40px rgba(34,217,138,.5); transform: translateY(-1px); }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+.fu  { animation: fadeUp .35s ease both; }
+.fu1 { animation: fadeUp .35s .07s ease both; }
+.fu2 { animation: fadeUp .35s .14s ease both; }
+.fu3 { animation: fadeUp .35s .21s ease both; }
+.fu4 { animation: fadeUp .35s .28s ease both; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-block">
+    <div class="slam-logo">SLAM</div>
+    <div class="logo-divider"></div>
+    <div class="logo-meta">
+      <div class="logo-tagline">Smart Layered</div>
+      <div class="logo-tagline"><em>Automated</em> Messy‑data cleaner</div>
+    </div>
+  </div>
+
+  <div class="by-hafid">
+    <span>by</span> <strong>Hafid</strong>
+  </div>
+
+  <div class="header-right"><span class="dot"></span>localhost:5000</div>
+</header>
+
+<main>
+
+  <!-- DROP ZONE -->
+  <div id="dropzone" onclick="document.getElementById('fileInput').click()">
+    <div class="glow"></div>
+    <span class="drop-icon">📂</span>
+    <div class="drop-title">DROP YOUR DATA</div>
+    <div class="drop-sub">drag & drop here or <b>click to browse</b> · supports <b>.csv</b> · <b>.xlsx</b> · <b>.xls</b></div>
+    <div class="file-badge" id="file-badge">📄 <span id="file-name"></span></div>
+    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls"/>
+  </div>
+
+  <div class="error-box" id="error-box"></div>
+
+  <!-- MODE SELECTOR -->
+  <div id="mode-section">
+    <div class="section-label">Choose your cleaning mode</div>
+    <div class="mode-cards">
+      <!-- BASIC -->
+      <div class="mode-card basic" id="card-basic" onclick="selectMode('basic')">
+        <span class="mode-badge basic">BASIC</span>
+        <span class="mode-icon">🧹</span>
+        <div class="mode-name basic">BASIC CLEANING</div>
+        <div class="mode-desc">Standard data quality fixes — remove duplicates, fill missing values, fix formats, detect outliers, and more. Pick only the steps you need.</div>
+        <div class="selected-check">✓</div>
+      </div>
+      <!-- ML -->
+      <div class="mode-card ml" id="card-ml" onclick="selectMode('ml')">
+        <span class="mode-badge ml">ML READY</span>
+        <span class="mode-icon">🤖</span>
+        <div class="mode-name ml">ML PIPELINE</div>
+        <div class="mode-desc">Full preprocessing for Machine Learning — handles missing values, encodes categoricals, scales features, and produces a clean numeric matrix.</div>
+        <div class="selected-check">✓</div>
+      </div>
+    </div>
+
+    <!-- BASIC STEPS -->
+    <div id="basic-steps">
+      <div class="section-label" style="margin-top:1.5rem">Select cleaning steps</div>
+      <div class="steps-grid" id="steps-grid"></div>
+    </div>
+
+    <!-- ML OPTIONS -->
+    <div id="ml-options">
+      <div class="section-label" style="margin-top:1.5rem">Pipeline options</div>
+      <div class="opts-row">
+        <div class="opt-g">
+          <label>Missing Values</label>
+          <select id="ml-missing">
+            <option value="smart">Smart — median + mode ✦</option>
+            <option value="mean">Mean + mode</option>
+            <option value="median">Median + mode</option>
+            <option value="knn">KNN Imputation</option>
+            <option value="drop">Drop rows</option>
+          </select>
+        </div>
+        <div class="opt-g">
+          <label>Encoding</label>
+          <select id="ml-encoding">
+            <option value="auto">Auto (one-hot / label) ✦</option>
+            <option value="onehot">Always One-Hot</option>
+            <option value="label">Always Label</option>
+          </select>
+        </div>
+        <div class="opt-g">
+          <label>Scaling</label>
+          <select id="ml-scaling">
+            <option value="standard">Standard z-score ✦</option>
+            <option value="minmax">MinMax 0–1</option>
+          </select>
+        </div>
+        <div class="opt-g">
+          <label>Target Column</label>
+          <input type="text" id="ml-target" placeholder="e.g. price, label…"/>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /mode-section -->
+
+  <!-- ACTION ROW -->
+  <div id="action-row">
+    <button class="btn" id="btn-slam" onclick="runClean()">
+      <span id="btn-icon">⚡</span>
+      <span id="btn-text">SLAM IT</span>
+      <div class="spinner" id="spinner"></div>
+    </button>
+    <button class="btn btn-ghost" onclick="resetAll()">↺ Reset</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results">
+    <div class="r-head fu">📊 DATA OVERVIEW</div>
+    <div class="stats-grid fu" id="stats-grid"></div>
+
+    <div class="r-head fu1">🔄 BEFORE vs AFTER</div>
+    <div class="compare-grid fu1" id="compare-grid"></div>
+
+    <div class="r-head fu2">✅ CLEANING LOG</div>
+    <ul class="log-list fu2" id="log-list"></ul>
+
+    <div class="r-head fu3">📋 COLUMN PROFILES</div>
+    <div class="tbl-wrap fu3">
+      <table>
+        <thead><tr>
+          <th>Column</th><th>Type</th><th>Unique</th>
+          <th>Missing</th><th>Miss%</th>
+          <th>Mean</th><th>Std</th><th>Min</th><th>Max</th><th>Outliers</th>
+        </tr></thead>
+        <tbody id="col-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="r-head fu4">👁 DATA PREVIEW — first 5 rows (original)</div>
+    <div class="sample-wrap fu4" id="sample-wrap"></div>
+  </div>
+
+</main>
+
+<!-- DOWNLOAD BAR -->
+<div id="dl-bar">
+  <div class="dl-info">
+    ✅ Clean &amp; ready — <strong id="dl-shape"></strong>
+    <span class="tag-mode" id="dl-mode-tag"></span>
+  </div>
+  <button class="btn-dl" onclick="downloadCSV()">⬇ DOWNLOAD CLEANED CSV</button>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+let currentFile = null, cleanedCSV = null, selectedMode = null;
+
+const STEPS = [
+  { id:'duplicates', icon:'🗑️', name:'Remove Duplicates',         desc:'Drop exact duplicate rows from the dataset.' },
+  { id:'missing',    icon:'🔧', name:'Handle Missing Values',      desc:'Fill nulls with median (numeric) or mode (text).' },
+  { id:'invalid',    icon:'⚠️', name:'Fix Invalid / Bad Data',     desc:'Replace infinites, strip whitespace, fix nulls.' },
+  { id:'formats',    icon:'📐', name:'Standardize Formats',        desc:'Normalize emails, phones, and common patterns.' },
+  { id:'irrelevant', icon:'✂️', name:'Remove Irrelevant Columns',  desc:'Drop constant columns and auto-detected ID fields.' },
+  { id:'consistency',icon:'🔗', name:'Check Data Consistency',     desc:'Fix negative values in age/price/salary columns.' },
+  { id:'outliers',   icon:'📊', name:'Detect & Cap Outliers',      desc:'IQR method — cap extreme values to 1.5×IQR fence.' },
+  { id:'dtypes',     icon:'🏷️', name:'Validate & Fix Data Types', desc:'Auto-convert text that looks numeric or date.' },
+];
+
+// ── Drag & Drop ─────────────────────────────────────────────
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); const f = e.dataTransfer.files[0]; if(f) setFile(f); });
+document.getElementById('fileInput').addEventListener('change', e => { if(e.target.files[0]) setFile(e.target.files[0]); });
+
+function setFile(f) {
+  currentFile = f;
+  document.getElementById('file-name').textContent = f.name + '  (' + fmtBytes(f.size) + ')';
+  const badge = document.getElementById('file-badge');
+  badge.style.display = 'inline-flex';
+  dz.classList.add('has-file');
+  document.getElementById('mode-section').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('dl-bar').style.display = 'none';
+  hideErr(); cleanedCSV = null;
+}
+
+function fmtBytes(b) {
+  if(b<1024) return b+' B';
+  if(b<1048576) return (b/1024).toFixed(1)+' KB';
+  return (b/1048576).toFixed(1)+' MB';
+}
+
+// ── Mode selection ──────────────────────────────────────────
+function selectMode(mode) {
+  selectedMode = mode;
+  document.getElementById('card-basic').classList.toggle('selected', mode==='basic');
+  document.getElementById('card-ml').classList.toggle('selected', mode==='ml');
+  document.getElementById('basic-steps').style.display = mode==='basic' ? 'block' : 'none';
+  document.getElementById('ml-options').style.display  = mode==='ml'    ? 'block' : 'none';
+  document.getElementById('action-row').style.display  = 'flex';
+
+  if(mode==='basic' && document.getElementById('steps-grid').innerHTML==='') {
+    renderSteps();
+  }
+}
+
+// ── Render step toggles ────────────────────────────────────
+function renderSteps() {
+  const grid = document.getElementById('steps-grid');
+  grid.innerHTML = STEPS.map(s => `
+    <div class="step-toggle active" id="st-${s.id}" onclick="toggleStep('${s.id}')">
+      <span class="step-icon">${s.icon}</span>
+      <div class="step-info">
+        <div class="step-name">${s.name}</div>
+        <div class="step-desc">${s.desc}</div>
+      </div>
+      <div class="step-cb">✓</div>
+    </div>
+  `).join('');
+}
+
+function toggleStep(id) {
+  const el = document.getElementById('st-'+id);
+  el.classList.toggle('active');
+}
+
+function getActiveSteps() {
+  return STEPS.filter(s => {
+    const el = document.getElementById('st-'+s.id);
+    return el && el.classList.contains('active');
+  }).map(s => s.id);
+}
+
+// ── Run cleaning ────────────────────────────────────────────
+async function runClean() {
+  if(!currentFile || !selectedMode) return;
+  setLoading(true); hideErr();
+
+  let options = { mode: selectedMode };
+
+  if(selectedMode === 'ml') {
+    options.missing  = document.getElementById('ml-missing').value;
+    options.encoding = document.getElementById('ml-encoding').value;
+    options.scaling  = document.getElementById('ml-scaling').value;
+    options.target   = document.getElementById('ml-target').value.trim();
+  } else {
+    options.steps = getActiveSteps();
+    if(!options.steps.length) { showErr('Select at least one cleaning step.'); setLoading(false); return; }
+  }
+
+  const fd = new FormData();
+  fd.append('file', currentFile);
+  fd.append('options', JSON.stringify(options));
+
+  try {
+    const res  = await fetch('/clean', { method:'POST', body:fd });
+    const data = await res.json();
+    if(!data.success) throw new Error(data.error);
+    cleanedCSV = data.csv_data;
+    renderResults(data, selectedMode);
+  } catch(err) {
+    showErr(err.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── Render results ──────────────────────────────────────────
+function renderResults({ before_profile:b, after_profile:a, log }, mode) {
+  // Stats
+  const sg = document.getElementById('stats-grid');
+  const cards = [
+    { lbl:'Rows (before)',   val: b.rows.toLocaleString(),           sub:'original',               cls:'c-blue'   },
+    { lbl:'Rows (after)',    val: a.rows.toLocaleString(),           sub:'after cleaning',          cls:'c-green'  },
+    { lbl:'Columns (after)',  val: a.cols,                          sub:`from ${b.cols}`,           cls:'c-green'  },
+    { lbl:'Missing Cells',   val: b.total_missing.toLocaleString(), sub: b.missing_pct_total+'% of data', cls: b.total_missing?'c-yellow':'c-green' },
+    { lbl:'Duplicates',      val: b.duplicates,                     sub:'rows removed',             cls: b.duplicates?'c-yellow':'c-green' },
+    { lbl:'Outlier Cols',    val: Object.values(b.stats).filter(s=>s.outliers>0).length, sub:'numeric columns', cls:'c-blue' },
+  ];
+  sg.innerHTML = cards.map(c=>`
+    <div class="s-card">
+      <div class="s-lbl">${c.lbl}</div>
+      <div class="s-val ${c.cls}">${c.val}</div>
+      <div class="s-sub">${c.sub}</div>
+    </div>`).join('');
+
+  // Compare
+  const cg = document.getElementById('compare-grid');
+  const rows = [
+    { k:'Total Rows',        bv:b.rows,              av:a.rows },
+    { k:'Total Columns',     bv:b.cols,              av:a.cols },
+    { k:'Missing Values',    bv:b.total_missing,     av:a.total_missing },
+    { k:'Numeric Columns',   bv:b.num_cols.length,   av:a.num_cols.length },
+    { k:'Categorical Cols',  bv:b.cat_cols.length,   av:a.cat_cols.length },
+    { k:'Duplicate Rows',    bv:b.duplicates,        av:a.duplicates },
+  ];
+  const mkRows = rows => rows.map(r=>`<div class="cmp-row"><span class="cmp-k">${r.k}</span><span class="cmp-v">${r.bv}</span></div>`).join('');
+  const mkRowsA= rows => rows.map(r=>`<div class="cmp-row"><span class="cmp-k">${r.k}</span><span class="cmp-v">${r.av}</span></div>`).join('');
+  cg.innerHTML = `
+    <div class="cmp-card"><div class="cmp-title before">⚠ BEFORE</div>${mkRows(rows)}</div>
+    <div class="cmp-card"><div class="cmp-title after">✓ AFTER</div>${mkRowsA(rows)}</div>`;
+
+  // Log
+  const ll = document.getElementById('log-list');
+  ll.innerHTML = log.map(l=>`<li class="log-item">
+    <span class="log-icon">${l.icon}</span>
+    <span class="log-step">${l.step}</span>
+    <span class="log-detail">${l.detail}</span>
+  </li>`).join('');
+
+  // Column table
+  const tb = document.getElementById('col-tbody');
+  tb.innerHTML = b.columns.map(col=>{
+    const isNum  = b.num_cols.includes(col);
+    const isCat  = b.cat_cols.includes(col);
+    const isDate = b.date_cols.includes(col) || b.potential_dates?.includes(col);
+    const tagCls = isDate ? 'tag-date' : isNum ? 'tag-num' : isCat ? 'tag-cat' : 'tag-other';
+    const tagLbl = isDate ? 'date' : isNum ? 'numeric' : isCat ? 'categorical' : b.dtypes[col];
+    const miss   = b.missing[col]||0;
+    const pct    = b.missing_pct[col]||0;
+    const mCls   = pct>30?'m-high':pct>5?'m-med':'m-low';
+    const s      = b.stats[col]||{};
+    const f      = v => (v!==undefined&&v!==null)?v:'—';
+    const outCls = (s.outliers>0)?'c-yellow':'';
+    return `<tr>
+      <td style="font-weight:600;color:var(--text)">${col}</td>
+      <td><span class="tag ${tagCls}">${tagLbl}</span></td>
+      <td>${b.cardinality[col]}</td>
+      <td class="${mCls}">${miss}</td>
+      <td class="${mCls}">${pct}%</td>
+      <td>${f(s.mean)}</td>
+      <td>${f(s.std)}</td>
+      <td>${f(s.min)}</td>
+      <td>${f(s.max)}</td>
+      <td class="${outCls}">${f(s.outliers)}</td>
+    </tr>`;
+  }).join('');
+
+  // Sample
+  const sw = document.getElementById('sample-wrap');
+  const cols = b.columns, sampleRows = b.sample;
+  const ths  = cols.map(c=>`<th>${c}</th>`).join('');
+  const trs  = sampleRows.map(r=>'<tr>'+cols.map(c=>{
+    const v=r[c]; return v===null||v===undefined?`<td class="null-cell">null</td>`:`<td>${v}</td>`;
+  }).join('')+'</tr>').join('');
+  sw.innerHTML = `<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+
+  // Show
+  document.getElementById('results').style.display = 'block';
+  const dlBar = document.getElementById('dl-bar');
+  dlBar.style.display = 'flex';
+  document.getElementById('dl-shape').textContent = `${a.rows.toLocaleString()} rows × ${a.cols} columns`;
+  const modeTag = document.getElementById('dl-mode-tag');
+  if(mode==='ml') { modeTag.textContent='ML READY'; modeTag.style.cssText='background:rgba(255,60,60,.12);color:var(--slam);'; }
+  else            { modeTag.textContent='BASIC CLEAN'; modeTag.style.cssText='background:rgba(62,142,255,.12);color:var(--blue);'; }
+  document.getElementById('results').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// ── Download ────────────────────────────────────────────────
+function downloadCSV() {
+  if(!cleanedCSV) return;
+  const blob = new Blob([cleanedCSV],{type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = (currentFile.name.replace(/\.[^.]+$/,'')) + '_slam_cleaned.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ── Helpers ─────────────────────────────────────────────────
+function setLoading(on) {
+  document.getElementById('btn-slam').disabled = on;
+  document.getElementById('spinner').style.display  = on?'block':'none';
+  document.getElementById('btn-icon').style.display = on?'none':'inline';
+  document.getElementById('btn-text').textContent   = on?'SLAMMING…':'SLAM IT';
+}
+function showErr(m){ const b=document.getElementById('error-box'); b.textContent='⚠ '+m; b.style.display='block'; }
+function hideErr() { document.getElementById('error-box').style.display='none'; }
+function resetAll() {
+  currentFile=null; cleanedCSV=null; selectedMode=null;
+  document.getElementById('fileInput').value='';
+  document.getElementById('file-badge').style.display='none';
+  dz.classList.remove('has-file');
+  document.getElementById('mode-section').style.display='none';
+  document.getElementById('basic-steps').style.display='none';
+  document.getElementById('ml-options').style.display='none';
+  document.getElementById('action-row').style.display='none';
+  document.getElementById('results').style.display='none';
+  document.getElementById('dl-bar').style.display='none';
+  document.getElementById('card-basic').classList.remove('selected');
+  document.getElementById('card-ml').classList.remove('selected');
+  document.getElementById('steps-grid').innerHTML='';
+  hideErr();
+}
+</script>
+</body>
+</html>
