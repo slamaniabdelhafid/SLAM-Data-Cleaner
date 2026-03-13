@@ -2,7 +2,7 @@
   <img src="assets/screenshots/logo.png" width="180">
 </p>
 
-<h1 align="center">git init – Smart Layered Automated Messy-data Cleaner</h1>
+<h1 align="center">SLAM – Smart Layered Automated Messy-data Cleaner</h1>
 
 <p align="center">
   <a href="https://www.python.org/">
